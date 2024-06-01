@@ -1,0 +1,24 @@
+!SESSION 2024-06-01 18:44:45.736 -----------------------------------------------
+eclipse.buildId=Version 1.10.1
+java.version=11.0.14.1
+java.vendor=Eclipse Adoptium
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=ru_RU
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 4 4 2024-06-01 18:45:06.097
+!MESSAGE CubeMX plugin appears to be active, Log4j initialization might be too late.
+
+!ENTRY com.st.stm32cube.ide.mcu.informationcenter 1 1 2024-06-01 18:45:06.142
+!MESSAGE Log4j initialized with config file C:\Users\alexander\Desktop\TechnoLabProj\TechnoLabQuest\.metadata\.log4j.xml
+
+!ENTRY com.st.stm32cube.ide.mcu.ide 1 1 2024-06-01 18:45:08.282
+!MESSAGE Started RMI Server, listening on port 41337
+
+!ENTRY org.eclipse.equinox.p2.metadata.repository 4 1000 2024-06-01 18:45:29.376
+!MESSAGE No repository found at https://sw-center.st.com/stm32cubeide/openstlinux/updatesite1.
+
+!ENTRY org.eclipse.equinox.p2.metadata.repository 4 1000 2024-06-01 18:45:33.632
+!MESSAGE No repository found at https://sw-center.st.com/stm32cubeide/updatesite1.
+
+!ENTRY org.eclipse.cdt.core 1 0 2024-06-01 18:46:11.663
+!MESSAGE Indexed 'TechoLabPrj' (19 sources, 81 headers) in 2.3 sec: 4,508 declarations; 21,631 references; 0 unresolved inclusions; 1 syntax errors; 2 unresolved names (0.0077%)
