@@ -1,0 +1,43 @@
+/*
+ * button.cpp
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#include "button.h"
+
+
+
+const uint8_t* Button::getButtonEvent(uint8_t last_button_state, uint8_t current_button_state)
+{
+	static ButtonEvent events;
+
+	if(getCurrentState() == GPIO_PIN_SET && getLastState() == GPIO_PIN_RESET)
+	{
+		this->press_start_time = osKernelGetTickCount();
+		return events.butpressed;
+	}
+
+	else if (getCurrentState() == GPIO_PIN_SET && getLastState() == GPIO_PIN_SET)
+	{
+		if (osKernelGetTickCount() - this->press_start_time >= HOLD_TIME)
+		{
+			this->press_start_time = osKernelGetTickCount();
+			return events.butheld;
+		}
+
+	}
+
+	else if (getCurrentState() == GPIO_PIN_SET && getLastState() == GPIO_PIN_SET)
+	{
+		this->press_duration = osKernelGetTickCount() - this->press_start_time;
+		if (this->press_duration < HOLD_TIME)
+		{
+			return events.butreleased;
+		}
+	}
+
+	setLastState(getCurrentState());
+}
+

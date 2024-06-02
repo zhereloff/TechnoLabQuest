@@ -1,0 +1,17 @@
+/*
+ * ringBuffer.h
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#ifndef RINGBUFFER_RINGBUFFER_H_
+#define RINGBUFFER_RINGBUFFER_H_
+
+class RingBuffer {
+public:
+	RingBuffer();
+	virtual ~RingBuffer();
+};
+
+#endif /* RINGBUFFER_RINGBUFFER_H_ */

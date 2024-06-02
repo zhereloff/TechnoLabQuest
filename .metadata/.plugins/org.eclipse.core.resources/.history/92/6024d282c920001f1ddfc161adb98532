@@ -1,0 +1,18 @@
+/*
+ * button.cpp
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#include "button.h"
+
+void setLastState(uint8_t state)
+{
+	Button::last_button_state = state;
+}
+void setCurrentState(uint8_t state)
+{
+	current_button_state = state;
+}
+

@@ -1,0 +1,22 @@
+/*
+ * button.h
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#ifndef MODULES_BUTTON_BUTTON_H_
+#define MODULES_BUTTON_BUTTON_H_
+
+#define PIN_RESET 0
+
+#include "cmsis_os.h"
+#include "stdbool.h"
+#include  <stdio.h>
+
+class Button {
+public:
+private:
+};
+
+#endif /* MODULES_BUTTON_BUTTON_H_ */
