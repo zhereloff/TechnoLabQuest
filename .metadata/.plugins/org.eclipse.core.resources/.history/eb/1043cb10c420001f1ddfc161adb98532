@@ -1,0 +1,18 @@
+/*
+ * button.cpp
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#include "button.h"
+
+Button::Button() {
+	// TODO Auto-generated constructor stub
+
+}
+
+Button::~Button() {
+	// TODO Auto-generated destructor stub
+}
+

@@ -1,0 +1,3 @@
+../Core/Modules/Button/button.h:45:11:uint8_t Button::getLastState()	16	static
+../Core/Modules/Button/button.h:48:11:uint8_t Button::getCurrentState()	16	static
+../Core/Modules/Button/button.cpp:12:16:const uint8_t* Button::getButtonEvent()	24	static

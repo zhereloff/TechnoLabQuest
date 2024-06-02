@@ -1,0 +1,36 @@
+/*
+ * ringBuffer.cpp
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#include "ringBuffer.h"
+
+bool write(uint8_t data)
+{
+	uint16_t next_write_index = (write_index + 1) % BUFFER_SIZE;
+	if (next_write_index == read_index) {
+		// Buffer overflow
+		return false;
+	}
+	buffer[write_index] = data;
+	write_index = next_write_index;
+	return true;
+}
+
+bool read(uint8_t &data)
+{
+    if (read_index == write_index) {
+        // Buffer is empty
+        return false;
+    }
+    data = buffer[read_index];
+    read_index = (read_index + 1) % BUFFER_SIZE;
+    return true;
+}
+
+bool isEmpty() const
+{
+    return read_index == write_index;
+}

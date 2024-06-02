@@ -1,0 +1,42 @@
+/*
+ * button.h
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#ifndef MODULES_BUTTON_BUTTON_H_
+#define MODULES_BUTTON_BUTTON_H_
+
+#define PIN_RESET 0
+
+#include "cmsis_os.h"
+#include "stdbool.h"
+#include  <stdio.h>
+
+class Button {
+	public:
+
+		typedef struct {
+			char butpressed[] = "Button pressed\n";
+			char butheld[] = "Button held for 5 seconds\n";
+			char butreleased[] = "Button released\n";
+		}ButtonEvent;
+
+		osStatus_t status;
+		TickType_t press_start_time = 0;
+		static uint32_t last_interrupt_time = 0;
+
+		void setLastState(uint8_t state);
+		void setCurrentState(uint8_t state);
+
+
+		void getButtonEvent(uint8_t last_button_state, uint8_t current_button_state);
+
+	private:
+		uint8_t last_button_state = PIN_RESET;
+		uint8_t current_button_state = PIN_RESET;
+
+};
+
+#endif /* MODULES_BUTTON_BUTTON_H_ */

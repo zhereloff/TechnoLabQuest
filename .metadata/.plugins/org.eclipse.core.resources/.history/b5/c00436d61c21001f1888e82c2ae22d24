@@ -1,0 +1,18 @@
+/*
+ * ringBuffer.cpp
+ *
+ *  Created on: 2 июн. 2024 г.
+ *      Author: alexander
+ */
+
+#include "ringBuffer.h"
+
+RingBuffer::RingBuffer() {
+	// TODO Auto-generated constructor stub
+
+}
+
+RingBuffer::~RingBuffer() {
+	// TODO Auto-generated destructor stub
+}
+
