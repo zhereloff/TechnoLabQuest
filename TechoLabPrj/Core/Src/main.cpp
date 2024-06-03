@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "../Modules/DHT/DHT.h"
 #include "../Modules/Button/button.h"
+#include "../RingBuffer/ringBuffer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,7 +40,7 @@
 #define ANTI_BOUNCE_DELAY 100
 #define ADC_MESS_BYTES 10
 #define SENSOR_MESS_BYTES 50
-#define RECEIVE_PWM_PACKET_SIZE 3
+#define RECEIVE_PWM_PACKET_SIZE 9
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,56 +53,53 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
 UART_HandleTypeDef huart2;
-
+DMA_HandleTypeDef hdma_usart2_rx;
+//DMA_HandleTypeDef hdma_usart2_tx;
 /* Definitions for controlPWMLed */
 osThreadId_t controlPWMLedHandle;
 const osThreadAttr_t controlPWMLed_attributes = {
   .name = "controlPWMLed",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 128 * 16,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for sensorHandler */
 osThreadId_t sensorHandlerHandle;
 const osThreadAttr_t sensorHandler_attributes = {
   .name = "sensorHandler",
-  .stack_size = 128 * 8,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 16,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for transmitData */
 osThreadId_t transmitSensorDataHandle;
 const osThreadAttr_t transmitData_attributes = {
   .name = "transmitSensorData",
-  .stack_size = 128 * 8,
-  .priority = (osPriority_t) osPriorityLow,
-};
-/* Definitions for receiveData */
-osThreadId_t receiveDataHandle;
-const osThreadAttr_t receiveData_attributes = {
-  .name = "receiveData",
-  .stack_size = 128 * 8,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 16,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for buttonHandler */
 osThreadId_t buttonHandlerHandle;
 const osThreadAttr_t buttonHandler_attributes = {
   .name = "buttonHandler",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 16,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for buttonTransmitEvent */
 osThreadId_t buttonTransmitEventHandle;
 const osThreadAttr_t buttonTransmitEvent_attributes = {
   .name = "buttonTransmitEvent",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 16,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 /* USER CODE BEGIN PV */
 osMessageQueueId_t sensorMessageQueue;
 osMessageQueueId_t buttonInterruptStateQueue;
 osMessageQueueId_t buttonEventMessadgeQueue;
+osMessageQueueId_t uartPWMMessageQueue;
 
 osMutexId_t uartMutex;
+RingBuffer rx_ring_buffer;
+
 
 typedef struct {
 
@@ -130,7 +128,6 @@ static void MX_USART2_UART_Init(void);
 void controlPWMLedTask(void *argument);
 void sensorHandlerTask(void *argument);
 void transmitDataTask(void *argument);
-void receiveDataTask(void *argument);
 void buttonHandlerTask(void *argument);
 void buttonTransmitEventTask(void *argument);
 /* USER CODE BEGIN PFP */
@@ -156,6 +153,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             userButton.last_interrupt_time = userButton.interrupt_time;
         }
     }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART2) {
+        for (uint8_t i = 0; i < RECEIVE_PWM_PACKET_SIZE; i++) {
+            rx_ring_buffer.write(rx_ring_buffer.dma_rx_buffer[i]);
+        }
+        osMessageQueuePut(uartPWMMessageQueue, &rx_ring_buffer.dma_rx_buffer, 0, 0);
+        HAL_UART_Receive_DMA(&huart2, rx_ring_buffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
+    }
+}
+
+void ProcessPacket(uint8_t *packet)
+{
+    char msg[50];
+    sprintf(msg, "Packet: %c, %c, %c, %c, %c, %c, %c, %c, %c\n",
+            packet[0], (uint8_t)packet[1], (char *)packet[2], packet[3], packet[4], packet[5], packet[6], packet[7], packet[8]);
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 }
 /* USER CODE END 0 */
 
@@ -191,7 +207,7 @@ int main(void)
   MX_ADC1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_UART_Receive_DMA(&huart2, rx_ring_buffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -210,6 +226,7 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
+  uartPWMMessageQueue = osMessageQueueNew(QUEUE_SIZE, RECEIVE_PWM_PACKET_SIZE * sizeof(uint8_t), NULL);
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
@@ -222,9 +239,6 @@ int main(void)
 
   /* creation of transmitData */
   transmitSensorDataHandle = osThreadNew(transmitDataTask, NULL, &transmitData_attributes);
-
-  /* creation of receiveData */
-  receiveDataHandle = osThreadNew(receiveDataTask, NULL, &receiveData_attributes);
 
   /* creation of buttonHandler */
   buttonHandlerHandle = osThreadNew(buttonHandlerTask, NULL, &buttonHandler_attributes);
@@ -355,10 +369,6 @@ static void MX_ADC1_Init(void)
 static void MX_USART2_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
   /* USER CODE BEGIN USART2_Init 1 */
 
   /* USER CODE END USART2_Init 1 */
@@ -385,15 +395,17 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_DMA_Init(void)
 {
+	  /* DMA controller clock enable */
+	  __HAL_RCC_DMA2_CLK_ENABLE();
+	  __HAL_RCC_DMA1_CLK_ENABLE();
 
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-
+	  /* DMA interrupt init */
+	  /* DMA1_Stream5_IRQn interrupt configuration */
+	  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+	  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+	  /* DMA2_Stream0_IRQn interrupt configuration */
+	  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
+	  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 }
 
 /**
@@ -443,10 +455,14 @@ static void MX_GPIO_Init(void)
 void controlPWMLedTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+    uint8_t packet[RECEIVE_PWM_PACKET_SIZE];
+
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+      if (osMessageQueueGet(uartPWMMessageQueue, &packet, NULL, osWaitForever) == osOK) {
+          ProcessPacket(packet);
+      }
   }
   /* USER CODE END 5 */
 }
@@ -500,32 +516,15 @@ void transmitDataTask(void *argument)
   {
 	  if (osMessageQueueGet(sensorMessageQueue, &packet, NULL, osWaitForever) == osOK)
 	  {
-		  osMutexAcquire(uartMutex, osWaitForever);
+		  //osMutexAcquire(uartMutex, osWaitForever);
 		  HAL_UART_Transmit(&huart2, (uint8_t*)packet.ADCData, strlen(packet.ADCData), 0xFF);
 	      HAL_UART_Transmit(&huart2, (uint8_t*)packet.SensorData, strlen(packet.SensorData), 0xFF);
-	      osMutexRelease(uartMutex);
+	      //osMutexRelease(uartMutex);
 	  }
   }
   /* USER CODE END transmitDataTask */
 }
 
-/* USER CODE BEGIN Header_receiveDataTask */
-/**
-* @brief Function implementing the receiveData thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_receiveDataTask */
-void receiveDataTask(void *argument)
-{
-  /* USER CODE BEGIN receiveDataTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END receiveDataTask */
-}
 /* USER CODE BEGIN Header_buttonHandlerTask */
 /**
 * @brief Function implementing the buttonHandler thread.
@@ -573,9 +572,9 @@ void buttonTransmitEventTask(void *argument)
 	for(;;)
 	{
 		if(osMessageQueueGet(buttonEventMessadgeQueue, &packet, NULL, osWaitForever) == osOK) {
-			osMutexAcquire(uartMutex, osWaitForever);
+			//osMutexAcquire(uartMutex, osWaitForever);
 			HAL_UART_Transmit(&huart2, packet.event, strlen((const char*)packet.event), 0xFF);
-			osMutexRelease(uartMutex);
+			//osMutexRelease(uartMutex);
 		}
 	}
 
