@@ -24,16 +24,16 @@ class Button {
 	public:
 
 		struct ButtonEvent {
-			uint8_t butpressed[16] = "Button pressed\n";
-		    uint8_t butheld[27] = "Button held for 5 seconds\n";
-		    uint8_t butreleased[17] = "Button released\n";
+			uint8_t butPressed[16] = "Button pressed\n";
+		    uint8_t butHeld[27] = "Button held for 5 seconds\n";
+		    uint8_t butReleased[17] = "Button released\n";
 		};
 
 		osStatus_t status;
-		TickType_t press_start_time = 0;
-		uint32_t last_interrupt_time = 0;
-		uint32_t interrupt_time;
-		uint32_t press_duration;
+		volatile TickType_t press_start_time = 0;
+		volatile uint32_t last_interrupt_time = 0;
+		volatile uint32_t interrupt_time;
+		volatile uint32_t press_duration;
 
 		void setLastState(uint8_t state){
 			this->last_button_state = state;

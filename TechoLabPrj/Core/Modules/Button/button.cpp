@@ -16,7 +16,7 @@ const uint8_t* Button::getButtonEvent()
 	if(getCurrentState() == GPIO_PIN_SET && getLastState() == GPIO_PIN_RESET)
 	{
 		this->press_start_time = osKernelGetTickCount();
-		return events.butpressed;
+		return events.butPressed;
 	}
 
 	else if (getCurrentState() == GPIO_PIN_SET && getLastState() == GPIO_PIN_SET)
@@ -24,7 +24,7 @@ const uint8_t* Button::getButtonEvent()
 		if (osKernelGetTickCount() - this->press_start_time >= HOLD_TIME)
 		{
 			this->press_start_time = osKernelGetTickCount();
-			return events.butheld;
+			return events.butHeld;
 		}
 	}
 
@@ -33,7 +33,7 @@ const uint8_t* Button::getButtonEvent()
 		uint32_t press_duration = osKernelGetTickCount() - this->press_start_time;
 		if (press_duration < HOLD_TIME)
 		{
-			return events.butreleased;
+			return events.butReleased;
 		}
 	}
 
