@@ -1,10 +1,10 @@
-18:10:36 **** Incremental Build of configuration Debug for project TechoLabPrj ****
+13:17:51 **** Build of configuration Debug for project TechoLabPrj ****
 make -j6 all 
 arm-none-eabi-size   TechoLabPrj.elf 
    text	   data	    bss	    dec	    hex	filename
-  36464	    208	  21068	  57740	   e18c	TechoLabPrj.elf
+  39364	    208	  21212	  60784	   ed70	TechoLabPrj.elf
 Finished building: default.size.stdout
  
 
-18:10:36 Build Finished. 0 errors, 0 warnings. (took 239ms)
+13:17:52 Build Finished. 0 errors, 0 warnings. (took 281ms)
 

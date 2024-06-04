@@ -33,6 +33,7 @@ CPP_DEPS :=
 SUBDIRS := \
 Core/Modules/Button \
 Core/Modules/DHT \
+Core/PWMControl \
 Core/RingBuffer \
 Core/Src \
 Core/Startup \
