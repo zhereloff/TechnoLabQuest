@@ -27,6 +27,7 @@
 #include "../Modules/DHT/DHT.h"
 #include "../Modules/Button/button.h"
 #include "../RingBuffer/ringBuffer.h"
+#include "../PWMControl/PWMControl.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,8 +53,12 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
+
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
+
 //DMA_HandleTypeDef hdma_usart2_tx;
 /* Definitions for controlPWMLed */
 osThreadId_t controlPWMLedHandle;
@@ -125,6 +130,9 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
+
 void controlPWMLedTask(void *argument);
 void sensorHandlerTask(void *argument);
 void transmitDataTask(void *argument);
@@ -166,13 +174,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
-void ProcessPacket(uint8_t *packet)
-{
-    char msg[50];
-    sprintf(msg, "Packet: %c, %c, %c, %c, %c, %c, %c, %c, %c\n",
-            packet[0], (uint8_t)packet[1], (char *)packet[2], packet[3], packet[4], packet[5], packet[6], packet[7], packet[8]);
-    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-}
 /* USER CODE END 0 */
 
 /**
@@ -206,8 +207,15 @@ int main(void)
   MX_DMA_Init();
   MX_ADC1_Init();
   MX_USART2_UART_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_UART_Receive_DMA(&huart2, rx_ring_buffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
+
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -227,6 +235,9 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_QUEUES */
   uartPWMMessageQueue = osMessageQueueNew(QUEUE_SIZE, RECEIVE_PWM_PACKET_SIZE * sizeof(uint8_t), NULL);
+  sensorMessageQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataSensorPacket), NULL);
+  buttonInterruptStateQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataButtonPacket), NULL);
+  buttonEventMessadgeQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataButtonPacket), NULL);
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
@@ -361,6 +372,102 @@ static void MX_ADC1_Init(void)
 
 }
 
+  static void MX_TIM3_Init(void)
+  {
+
+	  /* USER CODE BEGIN TIM3_Init 0 */
+
+	  /* USER CODE END TIM3_Init 0 */
+
+	  TIM_MasterConfigTypeDef sMasterConfig = {0};
+	  TIM_OC_InitTypeDef sConfigOC = {0};
+
+	  /* USER CODE BEGIN TIM3_Init 1 */
+
+	  /* USER CODE END TIM3_Init 1 */
+	  htim3.Instance = TIM3;
+	  htim3.Init.Prescaler = 0;
+	  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+	  htim3.Init.Period = 255;
+	  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+	  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+	  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+	  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+	  sConfigOC.Pulse = 0;
+	  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+	  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+	  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+	  {
+	    Error_Handler();
+	  }
+	  /* USER CODE BEGIN TIM3_Init 2 */
+
+	  /* USER CODE END TIM3_Init 2 */
+	  HAL_TIM_MspPostInit(&htim3);
+
+  }
+
+  /**
+    * @brief TIM4 Initialization Function
+    * @param None
+    * @retval None
+    */
+  static void MX_TIM4_Init(void)
+  {
+
+    /* USER CODE BEGIN TIM4_Init 0 */
+
+    /* USER CODE END TIM4_Init 0 */
+
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+    TIM_OC_InitTypeDef sConfigOC = {0};
+
+    /* USER CODE BEGIN TIM4_Init 1 */
+
+    /* USER CODE END TIM4_Init 1 */
+    htim4.Instance = TIM4;
+    htim4.Init.Prescaler = 0;
+    htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim4.Init.Period = 255;
+    htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    sConfigOC.OCMode = TIM_OCMODE_PWM1;
+    sConfigOC.Pulse = 0;
+    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+    if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    /* USER CODE BEGIN TIM4_Init 2 */
+
+    /* USER CODE END TIM4_Init 2 */
+    HAL_TIM_MspPostInit(&htim4);
+
+  }
 /**
   * @brief USART2 Initialization Function
   * @param None
@@ -456,12 +563,17 @@ void controlPWMLedTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
     uint8_t packet[RECEIVE_PWM_PACKET_SIZE];
-
+    PWMControl LEDControl;
+    int LEDData[3];
   /* Infinite loop */
   for(;;)
   {
-      if (osMessageQueueGet(uartPWMMessageQueue, &packet, NULL, osWaitForever) == osOK) {
-          ProcessPacket(packet);
+      if (osMessageQueueGet(uartPWMMessageQueue, &packet, NULL, osWaitForever) == osOK)
+      {
+    	  LEDControl.unpacket(packet, LEDData);
+    	  LEDControl.setPWMValue(&htim3, TIM_CHANNEL_1, LEDData[0]);
+    	  LEDControl.setPWMValue(&htim3, TIM_CHANNEL_2, LEDData[1]);
+    	  LEDControl.setPWMValue(&htim4, TIM_CHANNEL_1, LEDData[2]);
       }
   }
   /* USER CODE END 5 */
@@ -480,8 +592,6 @@ void sensorHandlerTask(void *argument)
 
 	static DHT_sensor livingRoom = {GPIOB, GPIO_PIN_7, DHT11, GPIO_NOPULL};
 	DataSensorPacket packet;
-
-	sensorMessageQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataSensorPacket), NULL);
 
   /* Infinite loop */
   for(;;)
@@ -538,9 +648,6 @@ void buttonHandlerTask(void *argument)
 
 	DataButtonPacket packet;
 	Button userButton;
-
-	buttonInterruptStateQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataButtonPacket), NULL);
-	buttonEventMessadgeQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataButtonPacket), NULL);
 
   /* Infinite loop */
   for(;;)

@@ -1738,3 +1738,10 @@ arm-none-eabi-size   TechoLabPrj.elf
   36464	    208	  21068	  57740	   e18c	TechoLabPrj.elf
 Finished building: default.size.stdout
  
+13:17:51 **** Build of configuration Debug for project TechoLabPrj ****
+make -j6 all 
+arm-none-eabi-size   TechoLabPrj.elf 
+   text	   data	    bss	    dec	    hex	filename
+  39364	    208	  21212	  60784	   ed70	TechoLabPrj.elf
+Finished building: default.size.stdout
+ 

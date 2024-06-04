@@ -17,6 +17,7 @@ RM := rm -rf
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
 -include Core/RingBuffer/subdir.mk
+-include Core/PWMControl/subdir.mk
 -include Core/Modules/DHT/subdir.mk
 -include Core/Modules/Button/subdir.mk
 -include objects.mk

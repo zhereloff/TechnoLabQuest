@@ -1,5 +1,6 @@
 "./Core/Modules/Button/button.o"
 "./Core/Modules/DHT/DHT.o"
+"./Core/PWMControl/PWMControl.o"
 "./Core/RingBuffer/ringBuffer.o"
 "./Core/Src/freertos.o"
 "./Core/Src/main.o"
