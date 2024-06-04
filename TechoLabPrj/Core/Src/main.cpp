@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "stm32f4xx_hal.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,6 +29,7 @@
 #include "../Modules/Button/button.h"
 #include "../RingBuffer/ringBuffer.h"
 #include "../PWMControl/PWMControl.h"
+#include "defines_and_vars.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,12 +38,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define QUEUE_SIZE 10
-#define NUM_OF_ADC 1
-#define ANTI_BOUNCE_DELAY 100
-#define ADC_MESS_BYTES 10
-#define SENSOR_MESS_BYTES 50
-#define RECEIVE_PWM_PACKET_SIZE 9
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,6 +47,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+IWDG_HandleTypeDef hiwdg;
+
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
@@ -97,29 +96,6 @@ const osThreadAttr_t buttonTransmitEvent_attributes = {
 };
 
 /* USER CODE BEGIN PV */
-osMessageQueueId_t sensorMessageQueue;
-osMessageQueueId_t buttonInterruptStateQueue;
-osMessageQueueId_t buttonEventMessadgeQueue;
-osMessageQueueId_t uartPWMMessageQueue;
-
-osMutexId_t uartMutex;
-RingBuffer rx_ring_buffer;
-
-
-typedef struct {
-
-  char SensorData[SENSOR_MESS_BYTES];
-  uint32_t adc_value[NUM_OF_ADC];
-  char ADCData[ADC_MESS_BYTES];
-
-} DataSensorPacket;
-
-typedef struct {
-
-  bool ButtonState;
-  const uint8_t* event;
-
-}DataButtonPacket;
 
 /* USER CODE END PV */
 
@@ -132,6 +108,7 @@ static void MX_ADC1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
+void MX_IWDG_Init(void);
 
 void controlPWMLedTask(void *argument);
 void sensorHandlerTask(void *argument);
@@ -155,8 +132,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
     if (GPIO_Pin == GPIO_PIN_13) {
         if (userButton.interrupt_time - userButton.last_interrupt_time > ANTI_BOUNCE_DELAY)
         {
-        	packet.ButtonState = !HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-        	osMessageQueuePut(buttonInterruptStateQueue, &packet.ButtonState, 0, 0);
+        	packet.buttonState = !HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+        	osMessageQueuePut(buttonInterruptStateQueue, &packet.buttonState, 0, 0);
 
             userButton.last_interrupt_time = userButton.interrupt_time;
         }
@@ -165,12 +142,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART2) {
-        for (uint8_t i = 0; i < RECEIVE_PWM_PACKET_SIZE; i++) {
-            rx_ring_buffer.write(rx_ring_buffer.dma_rx_buffer[i]);
+    if (huart->Instance == USART2)
+    {
+        for (uint8_t i = 0; i < RECEIVE_PWM_PACKET_SIZE; i++)
+        {
+            rxRingbBuffer.write(rxRingbBuffer.dma_rx_buffer[i]);
         }
-        osMessageQueuePut(uartPWMMessageQueue, &rx_ring_buffer.dma_rx_buffer, 0, 0);
-        HAL_UART_Receive_DMA(&huart2, rx_ring_buffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
+
+        osMessageQueuePut(uartPWMMessageQueue, &rxRingbBuffer.dma_rx_buffer, 0, 0);
+        HAL_UART_Receive_DMA(&huart2, rxRingbBuffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
     }
 }
 
@@ -209,9 +189,10 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_DMA(&huart2, rx_ring_buffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
+  HAL_UART_Receive_DMA(&huart2, rxRingbBuffer.dma_rx_buffer, RECEIVE_PWM_PACKET_SIZE);
 
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
@@ -234,10 +215,12 @@ int main(void)
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
+
   uartPWMMessageQueue = osMessageQueueNew(QUEUE_SIZE, RECEIVE_PWM_PACKET_SIZE * sizeof(uint8_t), NULL);
   sensorMessageQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataSensorPacket), NULL);
   buttonInterruptStateQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataButtonPacket), NULL);
   buttonEventMessadgeQueue = osMessageQueueNew(QUEUE_SIZE, sizeof(DataButtonPacket), NULL);
+
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
@@ -502,17 +485,17 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_DMA_Init(void)
 {
-	  /* DMA controller clock enable */
-	  __HAL_RCC_DMA2_CLK_ENABLE();
-	  __HAL_RCC_DMA1_CLK_ENABLE();
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
-	  /* DMA interrupt init */
-	  /* DMA1_Stream5_IRQn interrupt configuration */
-	  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
-	  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
-	  /* DMA2_Stream0_IRQn interrupt configuration */
-	  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
-	  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 }
 
 /**
@@ -548,6 +531,18 @@ static void MX_GPIO_Init(void)
 
 }
 
+
+void MX_IWDG_Init(void)
+{
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_64;
+  hiwdg.Init.Reload = 999;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+	Error_Handler();
+  }
+
+}
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
@@ -597,13 +592,16 @@ void sensorHandlerTask(void *argument)
   for(;;)
   {
 	  DHT_data d = DHT_getData(&livingRoom);
-	  sprintf(packet.SensorData, "Temperature %d C, Humidity %d%%", (uint8_t)d.temp, (uint8_t)d.hum);
+	  sprintf(packet.sensorData, "Temperature %d C, Humidity %d%%", static_cast<uint8_t> (d.temp), static_cast<uint8_t> (d.hum));
 
-	  HAL_ADC_Start_DMA(&hadc1, packet.adc_value, 1);
-	  sprintf(packet.ADCData, "ADC: %d\n", static_cast<uint16_t> (packet.adc_value[0]));
+	  HAL_ADC_Start_DMA(&hadc1, packet.adcValue, 1);
+	  sprintf(packet.ADCData, "ADC: %d\n", static_cast<uint16_t> (packet.adcValue[0]));
 
 	  osMessageQueuePut(sensorMessageQueue, &packet, 0, osWaitForever);
-	  osDelay(1000);
+
+	  HAL_IWDG_Refresh(&hiwdg);
+
+	  osDelay(SENSOR_TASK_DELAY_MS);
   }
   /* USER CODE END sensorHandlerTask */
 }
@@ -626,10 +624,10 @@ void transmitDataTask(void *argument)
   {
 	  if (osMessageQueueGet(sensorMessageQueue, &packet, NULL, osWaitForever) == osOK)
 	  {
-		  //osMutexAcquire(uartMutex, osWaitForever);
+		  osMutexAcquire(uartMutex, osWaitForever);
 		  HAL_UART_Transmit(&huart2, (uint8_t*)packet.ADCData, strlen(packet.ADCData), 0xFF);
-	      HAL_UART_Transmit(&huart2, (uint8_t*)packet.SensorData, strlen(packet.SensorData), 0xFF);
-	      //osMutexRelease(uartMutex);
+	      HAL_UART_Transmit(&huart2, (uint8_t*)packet.sensorData, strlen(packet.sensorData), 0xFF);
+	      osMutexRelease(uartMutex);
 	  }
   }
   /* USER CODE END transmitDataTask */
@@ -652,9 +650,9 @@ void buttonHandlerTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	 if(osMessageQueueGet(buttonInterruptStateQueue, &packet, NULL, NULL) == osOK)
+	 if(osMessageQueueGet(buttonInterruptStateQueue, &packet, NULL, 0) == osOK)
 	 {
-		 userButton.setCurrentState(packet.ButtonState);
+		 userButton.setCurrentState(packet.buttonState);
 	 }
 
 	 packet.event = userButton.getButtonEvent();
@@ -678,10 +676,11 @@ void buttonTransmitEventTask(void *argument)
 	/* Infinite loop */
 	for(;;)
 	{
-		if(osMessageQueueGet(buttonEventMessadgeQueue, &packet, NULL, osWaitForever) == osOK) {
-			//osMutexAcquire(uartMutex, osWaitForever);
+		if(osMessageQueueGet(buttonEventMessadgeQueue, &packet, NULL, osWaitForever) == osOK)
+		{
+			osMutexAcquire(uartMutex, osWaitForever);
 			HAL_UART_Transmit(&huart2, packet.event, strlen((const char*)packet.event), 0xFF);
-			//osMutexRelease(uartMutex);
+			osMutexRelease(uartMutex);
 		}
 	}
 
