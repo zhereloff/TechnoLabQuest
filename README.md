@@ -1,4 +1,5 @@
 # Тестовое задание на вакансию Embedded разработчик
+![TFBda2Bvp-U](https://github.com/zhereloff/TechnoLabQuest/assets/130227724/35837513-1366-4e9a-ae0c-eccf2652bfbf)
 
 ## В проекте реализованно:
 - Реализация проекта под FreeRTOS
