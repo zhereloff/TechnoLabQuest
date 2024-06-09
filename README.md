@@ -3,7 +3,7 @@
 https://youtu.be/gYxEXtR9L0Y
 ![TFBda2Bvp-U](https://github.com/zhereloff/TechnoLabQuest/assets/130227724/35837513-1366-4e9a-ae0c-eccf2652bfbf)
 
-## В проекте реализованно:
+## Что было сделано:
 - Реализация проекта под FreeRTOS
 - Обмен данными между Windows хостом и отладочной платой STM32 NUCLEO-F446RE по UART
 - Асинхронная передача с платы на хост событий от нажатия кнопки, подключенной к плате.
