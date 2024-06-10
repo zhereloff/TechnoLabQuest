@@ -1,6 +1,8 @@
 # Тестовое задание на вакансию Embedded разработчик
 ## Видео работы устройства:
 https://youtu.be/gYxEXtR9L0Y
+## Ссылка на репозиторий с Python скриптом:
+https://github.com/zhereloff/TechnoLabQuest 
 ![TFBda2Bvp-U](https://github.com/zhereloff/TechnoLabQuest/assets/130227724/35837513-1366-4e9a-ae0c-eccf2652bfbf)
 
 ## Что было сделано:
